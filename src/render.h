@@ -5,60 +5,82 @@
 
 #include <raylib.h>
 
-static inline void draw_triangle(vector2_t top, vector2_t left, vector2_t right, color_t color) {
+static inline void render_draw_triangle(tri_bounds_t bounds, color_t color) {
     DrawTriangle(
-        (Vector2) { top.x, top.y },
-        (Vector2) { left.x, left.y },
-        (Vector2) { right.x, right.y },
+        (Vector2) { bounds.top.x, bounds.top.y },
+        (Vector2) { bounds.left.x, bounds.left.y },
+        (Vector2) { bounds.right.x, bounds.right.y },
         (Color) { color.r, color.g, color.b, 255 }
     );
+    // render_set_pixel(top.x, top.y, color);
 }
 
-static inline vector2_t vector2_mid(vector2_t a, vector2_t b) {
-    return (vector2_t) {
-        .x = (a.x + b.x) * 0.5,
-        .y = (a.y + b.y) * 0.5,
-    };
-}
-
-static inline void draw_tri(tri_t tri, vector2_t top, vector2_t left, vector2_t right) {
+static inline void render_draw_tri(tri_t tri, tri_bounds_t bounds) {
     if (tri.type == TYPE_RECURSIVE) {
-        if (float_abs(right.x - left.x) < 6) {
-            draw_triangle(top, left, right, tri.color);
+        if (float_abs(bounds.right.x - bounds.left.x) < 6) {
+            render_draw_triangle(bounds, tri.color);
             return;
         }
-        if (left.y > top.y && left.y < 0) {
+        if (bounds.left.y > bounds.top.y && bounds.left.y < 0) {
             return;
         }
-        if (top.y > left.y && top.y < 0) {
+        if (bounds.top.y > bounds.left.y && bounds.top.y < 0) {
             return;
         }
-        if (left.x > right.x && left.x < 0) {
+        if (bounds.left.x > bounds.right.x && bounds.left.x < 0) {
             return;
         }
-        if (right.x > left.x && right.x < 0) {
+        if (bounds.right.x > bounds.left.x && bounds.right.x < 0) {
             return;
         }
-        if (left.y < top.y && left.y > screen_height) {
+        if (bounds.left.y < bounds.top.y && bounds.left.y >= screen_height) {
             return;
         }
-        if (top.y < left.y && top.y > screen_height) {
+        if (bounds.top.y < bounds.left.y && bounds.top.y >= screen_height) {
             return;
         }
-        if (left.x < right.x && left.x > screen_width) {
+        if (bounds.left.x < bounds.right.x && bounds.left.x >= screen_width) {
             return;
         }
-        if (right.x < left.x && right.x > screen_width) {
+        if (bounds.right.x < bounds.left.x && bounds.right.x >= screen_width) {
             return;
         }
-        vector2_t top_left = vector2_mid(top, left);
-        vector2_t top_right = vector2_mid(top, right);
-        vector2_t center = vector2_mid(left, right);
-        draw_tri(tri.children[POS_CENTER], center, top_right, top_left);
-        draw_tri(tri.children[POS_TOP], top, top_left, top_right);
-        draw_tri(tri.children[POS_LEFT], top_left, left, center);
-        draw_tri(tri.children[POS_RIGHT], top_right, center, right);
+        vector2_t top_left = vector2_mid(bounds.top, bounds.left);
+        vector2_t top_right = vector2_mid(bounds.top, bounds.right);
+        vector2_t center = vector2_mid(bounds.left, bounds.right);
+        render_draw_tri(
+            tri.children[POS_CENTER],
+            (tri_bounds_t) {
+                center,
+                top_right,
+                top_left,
+            }
+        );
+        render_draw_tri(
+            tri.children[POS_TOP],
+            (tri_bounds_t) {
+                bounds.top,
+                top_left,
+                top_right,
+            }
+        );
+        render_draw_tri(
+            tri.children[POS_LEFT],
+            (tri_bounds_t) {
+                top_left,
+                bounds.left,
+                center,
+            }
+        );
+        render_draw_tri(
+            tri.children[POS_RIGHT],
+            (tri_bounds_t) {
+                top_right,
+                center,
+                bounds.right,
+            }
+        );
     } else {
-        draw_triangle(top, left, right, tri.color);
+        render_draw_triangle(bounds, tri.color);
     }
 }

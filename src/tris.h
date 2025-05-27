@@ -9,9 +9,11 @@
 #include <math.h>
 
 #include "color.h"
+#include "vector2.h"
 
 typedef struct tri_t tri_t;
 typedef struct tri_table_t tri_table_t;
+typedef struct tri_bounds_t tri_bounds_t;
 
 enum {
     POS_CENTER,
@@ -25,6 +27,7 @@ enum {
     TYPE_RECURSIVE,
     TYPE_AIR,
     TYPE_STONE,
+    TYPE_BLUE,
     MAX_TYPE,
 };
 
@@ -42,6 +45,12 @@ struct tri_table_t {
     uint64_t id;
 };
 
+struct tri_bounds_t {
+    vector2_t top;
+    vector2_t left;
+    vector2_t right;
+};
+
 static const uint32_t tri_table_primes[] = {
     #define X(name) name,
     #include "primes.inc"
@@ -50,7 +59,7 @@ static const uint32_t tri_table_primes[] = {
 static inline tri_table_t *restrict tri_table_new(void) {
     tri_table_t *restrict ret = malloc(sizeof(tri_table_t));
     ret->id = MAX_TYPE;
-    ret->prime = tri_table_primes[20];
+    ret->prime = tri_table_primes[15];
     ret->tris = calloc(ret->prime, sizeof(tri_t));
     return ret;
 }
@@ -136,6 +145,7 @@ static const tri_t tri_basic[] = {
         .color.r = 255,
         .color.g = 255,
         .color.b = 255,
+        .hash = TYPE_AIR,
         .id = TYPE_AIR,
     },
     [TYPE_STONE] = (tri_t) {
@@ -143,6 +153,7 @@ static const tri_t tri_basic[] = {
         .color.r = 0,
         .color.g = 0,
         .color.b = 0,
+        .hash = TYPE_STONE,
         .id = TYPE_STONE,
     },
 };
