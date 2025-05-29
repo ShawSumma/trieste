@@ -2,18 +2,25 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "../raylib/include/raylib.h"
 
 #include "float.h"
 #include "camera.h"
 #include "worldgen.h"
 #include "render.h"
-#include "coord.h"
+#include "forth/forth.h"
+#include "forth/library.h"
 
 extern double screen_width;
 extern double screen_height;
 
-#if !defined(TEST_NONE) && !defined(TEST_FILL) && !defined(TEST_DRAW) && !defined(TEST_GEN) && !defined(TEST_FRAC)
-#define TEST_FRAC
+#if !defined(TEST_NONE) \
+    && !defined(TEST_FILL) \
+    && !defined(TEST_DRAW) \
+    && !defined(TEST_GEN) \
+    && !defined(TEST_FRAC) \
+    && !defined(TEST_FORTH)
+    #define TEST_FORTH
 #endif
 
 double triangle_sign(vector2_t p1, vector2_t p2, vector2_t p3) {
@@ -95,11 +102,12 @@ tri_t tri_subst_point(tri_table_t *table, tri_t tri, size_t n, tri_bounds_t boun
     return tri_subst_points(table, tri, n, bounds, 1, &points[0], type);
 }
 
-int main() {
-    tri_table_t *table = tri_table_new();
+int main(int argc, char **argv) {
+    (void) argc;
+    (void) argv;
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(screen_width, screen_height, "Trieste");
+    InitWindow((int) screen_width, (int) screen_height, "Trieste");
     camera_t camera = (camera_t) {
         .x = 0,
         .y = -0.2,
@@ -110,11 +118,34 @@ int main() {
 
     char lines[16][81] = {0};
 
+    tri_table_t *table = tri_table_new();
+
+    vector2_t mouse_pos_last = (vector2_t) {
+        .x = 0,
+        .y = 0,
+    };
+    (void) mouse_pos_last;
+
     tri_t black = tri_rgb(table, 0, 0, 0);
     tri_t white = tri_rgb(table, 255, 255, 255);
+    (void) black;
+    (void) white;
 
     #if defined(TEST_NONE)
-        tri_t tri = world_gen_fill(table, black);
+        tri_t tri = world_gen_fill(table, black, 16);
+    #elif defined(TEST_FORTH)
+        forth_context_t *ctx = forth_new(table);
+        forth_use_library(ctx, forth_library_std);
+        for (int i = 1; i < argc; i++) {
+            forth_exec(ctx, argv[i]);
+        }
+        tri_t tri = world_gen_fill(table, black, 1);
+        if (ctx->stack != NULL) {
+            forth_object_t obj = forth_pop(ctx);
+            if (forth_object_is_tri(obj)) {
+                tri = forth_object_to_tri(obj);
+            }
+        }
     #elif defined(TEST_FILL)
         size_t mix_value = 0;
         tri_t base1 = black;
@@ -123,34 +154,26 @@ int main() {
         ptrdiff_t step_size = 1;
         size_t iters_per_frame = 1;
     #elif defined(TEST_DRAW)
-        // tri_t next = STONE;
-        // tri_t next = world_gen_serpinski_meta(table, 12, 12, black, white);
-        tri_t next = black;
-        size_t world_size = 512;
-        ptrdiff_t brush = 16;
-        // camera.radius = 1.0 / pow(4, world_size-10);
+        size_t brush_size = 16;
         camera.radius = 0.001;
-        tri_t tri = world_gen_fill(table, white, world_size);
+        tri_t tri = world_gen_serpinski_meta(table, 8, 8, white, black);
         tri_t on_left = world_gen_serpinski(table, 16, black, white);
         tri_t on_right = world_gen_serpinski(table, 16, white, black);
     #elif defined(TEST_FRAC)
         camera.x = 0;
         camera.y = -1;
         camera.radius = 0.1;
-        tri_t tri = world_gen_serpinski_opt(table, 24);
+        tri_t tri = world_gen_serpinski(table, 512, white, black);
     #elif defined(TEST_GEN)
         tri_t tri = world_gen_test();
     #else
         #error test not implemented
     #endif
 
-
-    vector2_t mouse_pos_last = (vector2_t) {
-        .x = 0,
-        .y = 0,
-    };
-
     while (!WindowShouldClose()) {
+        screen_height = GetScreenHeight();
+        screen_width = GetScreenWidth();
+
         #if defined(TEST_FILL)
             tri_t tri;
             for (size_t i = 0; i < iters_per_frame; i++) {
@@ -190,21 +213,21 @@ int main() {
         #if defined(TEST_DRAW)
         if (mouse_pos_last.x != 0 || mouse_pos_last.y != 0) {
             // if (IsKeyPressed(KEY_ONE)) {
-            //     brush += 1;
-            // } 
-            // if (IsKeyPressed(KEY_TWO)) {
-            //     brush -= 1;
+            //     brush_size += 1;
             // }
-            brush = 5+log2(1.0/camera.radius);
+            // if (IsKeyPressed(KEY_TWO)) {
+            //     brush_size -= 1;
+            // }
+            brush_size = (size_t) (5.0 + log2(1.0 / camera.radius));
             vector2_t points[20];
             for (int i = 0; i < 20; i++) {
                 points[i] = vector2_lerp(mouse_pos_last, mouse, (double) i / 20);
             }
             if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                tri = tri_subst_points(table, tri, brush, bounds, 20, points, on_left);
+                tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, on_left);
             }
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-                tri = tri_subst_points(table, tri, brush, bounds, 20, points, on_right);
+                tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, on_right);
             }
         }
         #endif
@@ -221,7 +244,7 @@ int main() {
 
             #if defined(TEST_DRAW)
                 {
-                    snprintf(lines[line], 80, "BRUSH: %zi\n", brush);
+                    snprintf(lines[line], 80, "BRUSH: %zu\n", brush_size);
                     line += 1;
                 }
             #endif
@@ -276,4 +299,6 @@ int main() {
     // woo
     TakeScreenshot("out.png");
     CloseWindow();
+
+    return 0;
 }

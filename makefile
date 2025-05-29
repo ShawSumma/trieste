@@ -5,10 +5,22 @@ DEBUG = lldb
 TEST = NONE
 
 CFLAGS += -O3 -flto
-CFLAGS += -fsanitize=address,undefined
+# CFLAGS += -fsanitize=address,undefined
 CFLAGS += -I raylib/include
+CFLAGS += -Wall -Wextra -Wconversion -std=c11 -pedantic
 
-SRCS = src/camera.c src/main.c src/tris.c
+SRCS :=
+SRCS += src/camera.c
+SRCS += src/color.c
+SRCS += src/coord.c
+SRCS += src/float.c
+SRCS += src/forth/forth.c
+SRCS += src/forth/library.c
+SRCS += src/main.c
+SRCS += src/render.c
+SRCS += src/tris.c
+SRCS += src/vector2.c
+SRCS += src/worldgen.c
 
 run: build
 	./trieste
