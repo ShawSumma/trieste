@@ -9,8 +9,8 @@ static inline tri_t world_gen_serpinski(tri_table_t *table, size_t n, tri_t colo
     tri_t ret = object;
     tri_t base = color;
     for (int i = 0; i < n; i++) {
-        ret = JOIN(base, ret, ret, ret);
-        base = JOIN(base, base, base, base);
+        ret = tri_join(table, base, ret, ret, ret);
+        base = tri_join(table, base, base, base, base);
     }
     return ret;
 }
@@ -28,12 +28,11 @@ static inline tri_t world_gen_serpinski_meta(tri_table_t *table, size_t n, size_
 }
 
 static inline tri_t world_gen_fill(tri_table_t *table, tri_t base, size_t n) {
-    if (n == 0) {
-        return base;
-    } else {
-        tri_t next = world_gen_fill(table, base, n-1);
-        return JOIN(next, next, next, next);
+    tri_t ret = base;
+    for (int i = 0; i < n; i++) {
+        ret = tri_join(table, ret, ret, ret, ret);
     }
+    return ret;
 }
 
 static inline tri_t world_gen_fill_low_mix(tri_table_t *table, tri_t base1, tri_t base2, size_t *ref_gas, size_t n) {
@@ -49,28 +48,15 @@ static inline tri_t world_gen_fill_low_mix(tri_table_t *table, tri_t base1, tri_
             *ref_gas -= (1 << (2*n));
             return world_gen_fill(table, base1, n);
         } else if (*ref_gas > 0) {
-            #if 1
-                tri_t center = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-                tri_t top = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-                tri_t left = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-                tri_t right = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-            #else
-                tri_t top = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-                tri_t left = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-                tri_t center = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-                tri_t right = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
-            #endif
-            return JOIN(center, top, left, right);
+            tri_t center = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
+            tri_t top = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
+            tri_t left = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
+            tri_t right = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);
+            return tri_join(table, center, top, left, right);
         } else {
             return world_gen_fill(table, base2, n);
         }
     }
-}
-
-static inline tri_t world_gen_order(tri_table_t *table) {
-    size_t size = 10;
-    size_t gas = 100000;
-    return world_gen_fill_low_mix(table, STONE, AIR, &gas, size);
 }
 
 typedef tri_t world_gen_proc_t(void *ctx, tri_bounds_t bounds);
@@ -144,5 +130,3 @@ static inline tri_t world_gen_proc(tri_table_t *table, void *ctx, world_gen_proc
         }
     );
 }
-
-#define world_gen(table) world_gen_order(table)

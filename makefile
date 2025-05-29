@@ -4,9 +4,11 @@ DEBUG = lldb
 
 TEST = NONE
 
-CFLAGS += -O3
+CFLAGS += -O3 -flto
 CFLAGS += -fsanitize=address,undefined
 CFLAGS += -I raylib/include
+
+SRCS = src/camera.c src/main.c src/tris.c
 
 run: build
 	./trieste
@@ -17,4 +19,4 @@ debug: build
 build: trieste
 
 trieste: src/main.c
-	${CC} src/main.c -o trieste raylib/lib/libraylib.a -framework Cocoa -framework IOKit -DTEST_${TEST} ${CFLAGS}
+	${CC} ${SRCS} -o trieste raylib/lib/libraylib.a -framework Cocoa -framework IOKit -DTEST_${TEST} ${CFLAGS}

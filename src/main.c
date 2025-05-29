@@ -1,5 +1,7 @@
 
 #include <inttypes.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 #include "float.h"
 #include "camera.h"
@@ -7,8 +9,8 @@
 #include "render.h"
 #include "coord.h"
 
-double screen_width = 1920/2;
-double screen_height = 1080/2;
+extern double screen_width;
+extern double screen_height;
 
 #if !defined(TEST_NONE) && !defined(TEST_FILL) && !defined(TEST_DRAW) && !defined(TEST_GEN) && !defined(TEST_FRAC)
 #define TEST_FRAC
@@ -108,26 +110,29 @@ int main() {
 
     char lines[16][81] = {0};
 
+    tri_t black = tri_rgb(table, 0, 0, 0);
+    tri_t white = tri_rgb(table, 255, 255, 255);
+
     #if defined(TEST_NONE)
-        tri_t tri = world_gen(table);
+        tri_t tri = world_gen_fill(table, black);
     #elif defined(TEST_FILL)
         size_t mix_value = 0;
-        tri_t base1 = STONE;
-        tri_t base2 = AIR;
+        tri_t base1 = black;
+        tri_t base2 = white;
         size_t world_size = 7;
         ptrdiff_t step_size = 1;
         size_t iters_per_frame = 1;
     #elif defined(TEST_DRAW)
         // tri_t next = STONE;
-        // tri_t next = world_gen_serpinski_meta(table, 12, 12, STONE, AIR);
-        tri_t next = STONE;
-        size_t world_size = 64;
+        // tri_t next = world_gen_serpinski_meta(table, 12, 12, black, white);
+        tri_t next = black;
+        size_t world_size = 512;
         ptrdiff_t brush = 16;
         // camera.radius = 1.0 / pow(4, world_size-10);
         camera.radius = 0.001;
-        tri_t tri = world_gen_fill(table, AIR, world_size);
-        tri_t on_left = world_gen_serpinski(table, 16, STONE, AIR);
-        tri_t on_right = world_gen_serpinski(table, 16, AIR, STONE);
+        tri_t tri = world_gen_fill(table, white, world_size);
+        tri_t on_left = world_gen_serpinski(table, 16, black, white);
+        tri_t on_right = world_gen_serpinski(table, 16, white, black);
     #elif defined(TEST_FRAC)
         camera.x = 0;
         camera.y = -1;
@@ -221,8 +226,13 @@ int main() {
                 }
             #endif
 
+            // {
+            //     snprintf(lines[line], 80, "TRIS: %"PRIu64"\n", table->id);
+            //     line += 1;
+            // }
+
             {
-                snprintf(lines[line], 80, "TRIS: %"PRIu64"\n", table->id);
+                snprintf(lines[line], 80, "TRIS: %"PRIu64" / %"PRIu64"\n", table->id, table->prime);
                 line += 1;
             }
         }

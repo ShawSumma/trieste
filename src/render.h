@@ -5,6 +5,9 @@
 
 #include <raylib.h>
 
+extern double screen_width;
+extern double screen_height;
+
 static inline void render_draw_triangle(tri_bounds_t bounds, color_t color) {
     DrawTriangle(
         (Vector2) { bounds.top.x, bounds.top.y },
@@ -17,7 +20,7 @@ static inline void render_draw_triangle(tri_bounds_t bounds, color_t color) {
 
 static inline void render_draw_tri(tri_t tri, tri_bounds_t bounds) {
     if (tri.type == TYPE_RECURSIVE) {
-        if (float_abs(bounds.right.x - bounds.left.x) < 6) {
+        if (float_abs(bounds.right.x - bounds.left.x) < 4) {
             render_draw_triangle(bounds, tri.color);
             return;
         }
