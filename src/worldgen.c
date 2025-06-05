@@ -40,8 +40,8 @@ tri_t world_gen_fill_low_mix(tri_table_t *table, tri_t base1, tri_t base2, size_
             return base2;
         }
     } else {
-        if (*ref_gas >= (1 << (2*n))) {
-            *ref_gas -= (1 << (2*n));
+        if (*ref_gas >= ((size_t)1 << (2*n))) {
+            *ref_gas -= ((size_t)1 << (2*n));
             return world_gen_fill(table, base1, n);
         } else if (*ref_gas > 0) {
             tri_t center = world_gen_fill_low_mix(table, base1, base2, ref_gas, n-1);

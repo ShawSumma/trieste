@@ -1,6 +1,8 @@
 raylib
 .vscode
 trieste
-out.png
+*.png
+snap.*
 compile_commands.json
 *.dSYM
+*.ttf

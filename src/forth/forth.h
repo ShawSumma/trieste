@@ -3,29 +3,39 @@
 
 #include "../tris.h"
 
+#include <stddef.h>
 #include <stdbool.h>
 
-typedef struct forth_list_t forth_list_t;
 typedef struct forth_object_t forth_object_t;
-typedef struct forth_binding_t forth_binding_t;
+typedef struct forth_string_t forth_string_t;
+typedef struct forth_function_t forth_function_t;
+
 typedef struct forth_stack_t forth_stack_t;
+typedef struct forth_binding_t forth_binding_t;
 typedef struct forth_context_t forth_context_t;
 
-enum {
-    FORTH_NIL,
-    FORTH_NUMBER,
-    FORTH_TRIANGLE,
-    FORTH_FUNCTION,
+typedef void (*forth_function_pointer_t)(forth_context_t *ctx, void *closure);
+
+struct forth_function_t {
+    const char *name;
+    forth_function_pointer_t ptr;
+    void *closure;
 };
 
-typedef void (*forth_function_t)(forth_context_t *ctx);
+struct forth_string_t {
+    size_t len;
+    const char *ptr;
+};
 
 struct forth_object_t {
     uint8_t tag;
-    union {
+    union forth_object_data_t {
+        void *nil;
         double number;
         tri_t tri;
         forth_function_t function;
+        forth_string_t string;
+        // As per `type.inc` - add type here
     } data;
 };
 
@@ -49,34 +59,52 @@ struct forth_context_t {
 // contexts
 forth_context_t *forth_new(tri_table_t *table);
 void forth_define(forth_context_t *ctx, const char *name, forth_object_t object);
+forth_object_t *forth_find(forth_context_t *ctx, const char *name);
+forth_object_t forth_resolve_tagged(forth_context_t *ctx, const char *name, uint8_t forth_tag);
 
-// stack
+// libraries
+void forth_use_library(forth_context_t *ctx, forth_function_t *lib);
+
+#define FORTH_LIBRARY_VAR(name) forth_function_t forth_library_ ## name[]
+#define FORTH_USE_LIBARRY(ctx, name) \
+    { \
+        extern FORTH_LIBRARY_VAR(name); \
+        forth_use_library((ctx), forth_library_ ## name); \
+    }
+
+// stack manipulation
 void forth_push(forth_context_t *ctx, forth_object_t obj);
 forth_object_t forth_pop(forth_context_t *ctx);
 
-// interp
-void forth_exec(forth_context_t *ctx, const char *src);
+/// Interprets given code over a context
+///
+/// `forth_exec(my_ctx, 2, "12junk data here :)")`
+/// `forth_exec(my_ctx, -1, "/a null terminated string");`
+void forth_exec(forth_context_t *ctx, ptrdiff_t len, const char *src);
 
-// number objects
-bool forth_object_is_number(forth_object_t obj);
-forth_object_t forth_object_of_number(double n);
-double forth_object_to_number(forth_object_t obj);
-void forth_push_number(forth_context_t *ctx, double n);
-double forth_pop_number(forth_context_t *ctx);
-void forth_define_number(forth_context_t *ctx, const char *name, double n);
+/// Function for working different kinds of `forth_object_t`.
+#define TYPE void
+#define NAME nil
+#include "type.inc"
 
-// tri objects
-bool forth_object_is_tri(forth_object_t obj);
-forth_object_t forth_object_of_tri(tri_t tri);
-tri_t forth_object_to_tri(forth_object_t obj);
-void forth_push_tri(forth_context_t *ctx, tri_t tri);
-tri_t forth_pop_tri(forth_context_t *ctx);
-void forth_define_tri(forth_context_t *ctx, const char *name, tri_t tri);
+#define TYPE double
+#define NAME number
+#include "type.inc"
 
-// function objects
-bool forth_object_is_function(forth_object_t obj);
-forth_object_t forth_object_of_function(forth_function_t function);
-forth_function_t forth_object_to_function(forth_object_t obj);
-void forth_push_function(forth_context_t *ctx, forth_function_t function);
-forth_function_t forth_pop_function(forth_context_t *ctx);
-void forth_define_function(forth_context_t *ctx, const char *name, forth_function_t function);
+#define TYPE tri_t
+#define NAME tri
+#include "type.inc"
+
+#define TYPE forth_function_t
+#define NAME function
+#include "type.inc"
+
+#define TYPE forth_string_t
+#define NAME string
+#include "type.inc"
+
+// As per `type.inc` - add include here
+
+#define CAT(x, y) PREPROC_CAT_(x, y)
+
+#undef CAT

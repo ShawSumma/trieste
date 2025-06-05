@@ -1,4 +1,5 @@
 
+#include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -6,22 +7,12 @@
 
 #include "float.h"
 #include "camera.h"
-#include "worldgen.h"
 #include "render.h"
 #include "forth/forth.h"
-#include "forth/library.h"
+#include "serial/serial.h"
 
 extern double screen_width;
 extern double screen_height;
-
-#if !defined(TEST_NONE) \
-    && !defined(TEST_FILL) \
-    && !defined(TEST_DRAW) \
-    && !defined(TEST_GEN) \
-    && !defined(TEST_FRAC) \
-    && !defined(TEST_FORTH)
-    #define TEST_FORTH
-#endif
 
 double triangle_sign(vector2_t p1, vector2_t p2, vector2_t p3) {
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
@@ -102,6 +93,27 @@ tri_t tri_subst_point(tri_table_t *table, tri_t tri, size_t n, tri_bounds_t boun
     return tri_subst_points(table, tri, n, bounds, 1, &points[0], type);
 }
 
+
+const char *main_reload_file(forth_context_t *ctx, const char *path, const char *last_data) {
+    FILE *file = fopen(path, "r");
+    fseek(file, 0, SEEK_END);
+    size_t len = (size_t) ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *ret = malloc(len + 1);
+    fread(ret, 1, len, file);
+    ret[len] = '\0';
+
+    if (last_data == NULL || !!strcmp(last_data, ret)) {
+        forth_exec(ctx, (ptrdiff_t) len, ret);
+    }
+
+    if (last_data != NULL) {
+        free((void *) last_data);
+    }
+
+    return (const char *) ret;
+}
+
 int main(int argc, char **argv) {
     (void) argc;
     (void) argv;
@@ -111,7 +123,7 @@ int main(int argc, char **argv) {
     camera_t camera = (camera_t) {
         .x = 0,
         .y = -0.2,
-        .radius = 1,
+        .radius = 0.1,
     };
     double base_zoom_speed = 1;
     double base_move_speed = 1;
@@ -131,63 +143,32 @@ int main(int argc, char **argv) {
     (void) black;
     (void) white;
 
-    #if defined(TEST_NONE)
-        tri_t tri = world_gen_fill(table, black, 16);
-    #elif defined(TEST_FORTH)
-        forth_context_t *ctx = forth_new(table);
-        forth_use_library(ctx, forth_library_std);
-        for (int i = 1; i < argc; i++) {
-            forth_exec(ctx, argv[i]);
+    const char *load_path = "test.trieste";
+    tri_t tri = tri_rgb(table, 128, 64, 64);
+
+    forth_context_t *ctx = forth_new(table);
+    FORTH_USE_LIBARRY(ctx, core);
+    for (int i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "-f")) {
+            i += 1;
+            load_path = argv[i];
+        } else {
+            forth_exec(ctx, -1, argv[i]);
         }
-        tri_t tri = world_gen_fill(table, black, 1);
-        if (ctx->stack != NULL) {
-            forth_object_t obj = forth_pop(ctx);
-            if (forth_object_is_tri(obj)) {
-                tri = forth_object_to_tri(obj);
-            }
-        }
-    #elif defined(TEST_FILL)
-        size_t mix_value = 0;
-        tri_t base1 = black;
-        tri_t base2 = white;
-        size_t world_size = 7;
-        ptrdiff_t step_size = 1;
-        size_t iters_per_frame = 1;
-    #elif defined(TEST_DRAW)
-        size_t brush_size = 16;
-        camera.radius = 0.001;
-        tri_t tri = world_gen_serpinski_meta(table, 8, 8, white, black);
-        tri_t on_left = world_gen_serpinski(table, 16, black, white);
-        tri_t on_right = world_gen_serpinski(table, 16, white, black);
-    #elif defined(TEST_FRAC)
-        camera.x = 0;
-        camera.y = -1;
-        camera.radius = 0.1;
-        tri_t tri = world_gen_serpinski(table, 512, white, black);
-    #elif defined(TEST_GEN)
-        tri_t tri = world_gen_test();
-    #else
-        #error test not implemented
-    #endif
+    }
+
+    const char *last_data = main_reload_file(ctx, load_path, NULL);
+
+    forth_object_t obj = forth_resolve_tagged(ctx, "on-init", forth_tag_tri());
+    if (obj.tag != forth_tag_tri()) {
+        tri = forth_to_tri(obj);
+    }
+
+    Font font = LoadFontEx("./UbuntuMono-B.ttf", 72, NULL, 0);
 
     while (!WindowShouldClose()) {
         screen_height = GetScreenHeight();
         screen_width = GetScreenWidth();
-
-        #if defined(TEST_FILL)
-            tri_t tri;
-            for (size_t i = 0; i < iters_per_frame; i++) {
-                if (mix_value >= (1 << (world_size*2))) {
-                    tri_t tmp1 = base1;
-                    base1 = base2;
-                    base2 = tmp1;
-                    mix_value = 0;
-                }
-                size_t gas = mix_value;
-                tri = world_gen_fill_low_mix(table, base1, base2, &gas, world_size);
-                mix_value += step_size;
-            }
-        #endif
 
         // equal triangle of points on the unit circle
         vector2_t mouse = (vector2_t) {
@@ -210,27 +191,40 @@ int main(int argc, char **argv) {
             }),
         };
 
-        #if defined(TEST_DRAW)
-        if (mouse_pos_last.x != 0 || mouse_pos_last.y != 0) {
-            // if (IsKeyPressed(KEY_ONE)) {
-            //     brush_size += 1;
-            // }
-            // if (IsKeyPressed(KEY_TWO)) {
-            //     brush_size -= 1;
-            // }
-            brush_size = (size_t) (5.0 + log2(1.0 / camera.radius));
-            vector2_t points[20];
-            for (int i = 0; i < 20; i++) {
-                points[i] = vector2_lerp(mouse_pos_last, mouse, (double) i / 20);
-            }
-            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, on_left);
-            }
-            if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-                tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, on_right);
+        if (IsKeyPressed(KEY_T)) {
+            FILE *out = fopen("snap.trieste", "w");
+            if (out != NULL) {
+                file_write_tri(out, table, tri);
+                fclose(out);
             }
         }
-        #endif
+
+        if (IsMouseButtonPressed(KEY_R)) {
+            last_data = main_reload_file(ctx, load_path, last_data);
+        }
+
+        if (mouse_pos_last.x != 0 || mouse_pos_last.y != 0) {
+            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+                size_t brush_size = (size_t) (5.0 + log2(1.0 / camera.radius));
+                vector2_t points[20];
+                for (int i = 0; i < 20; i++) {
+                    points[i] = vector2_lerp(mouse_pos_last, mouse, (double) i / 20);
+                }
+                if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+                    forth_object_t on_left = forth_resolve_tagged(ctx, "on-left", forth_tag_tri());
+                    if (on_left.tag == forth_tag_tri()) {
+                        tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, forth_to_tri(on_left));
+                    }
+                }
+                if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+                    forth_object_t on_right = forth_resolve_tagged(ctx, "on-right", forth_tag_tri());
+                    if (on_right.tag == forth_tag_tri()) {
+                        tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, forth_to_tri(on_right));
+                    }
+                }
+            }
+        }
+
         mouse_pos_last = mouse;
 
         // debug text generation
@@ -253,11 +247,6 @@ int main(int argc, char **argv) {
             //     snprintf(lines[line], 80, "TRIS: %"PRIu64"\n", table->id);
             //     line += 1;
             // }
-
-            {
-                snprintf(lines[line], 80, "TRIS: %"PRIu64" / %"PRIu64"\n", table->id, table->prime);
-                line += 1;
-            }
         }
 
         // zoom & pan
@@ -291,13 +280,19 @@ int main(int argc, char **argv) {
             }
             // debug text render
             for (int i = 0; i < 16; i++) {
-                DrawText(lines[i], 10, 10 + 40 * i, 30, BLACK);
+                DrawTextEx(font, lines[i], (Vector2) { 10, (float) (10 + 40 * i) }, 30, 5, BLACK);
             }
         EndDrawing();
 
     }
-    // woo
-    TakeScreenshot("out.png");
+
+    FILE *out = fopen("snap.trieste", "w");
+    if (out != NULL) {
+        file_write_tri(out, table, tri);
+        fclose(out);
+    }
+
+    TakeScreenshot("snap.png");
     CloseWindow();
 
     return 0;

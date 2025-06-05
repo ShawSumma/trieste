@@ -7,7 +7,7 @@
 tri_table_t *tri_table_new(void) {
     tri_table_t *ret = malloc(sizeof(tri_table_t));
     ret->id = MAX_TYPE;
-    ret->prime = 1000 * 1000;
+    ret->prime = 1000 * 1000 * 10;
     ret->tris = calloc(ret->prime, sizeof(tri_t));
     return ret;
 }
