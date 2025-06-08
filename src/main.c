@@ -10,15 +10,16 @@
 #include "render.h"
 #include "forth/forth.h"
 #include "serial/serial.h"
+#include "vector2.h"
 
 extern double screen_width;
 extern double screen_height;
 
-double triangle_sign(vector2_t p1, vector2_t p2, vector2_t p3) {
+static inline double triangle_sign(vector2_t p1, vector2_t p2, vector2_t p3) {
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
 }
 
-bool tri_bounds_has(tri_bounds_t bounds, vector2_t point) {
+static inline bool tri_bounds_has(tri_bounds_t bounds, vector2_t point) {
     double d1 = triangle_sign(point, bounds.top, bounds.left);
     double d2 = triangle_sign(point, bounds.left, bounds.right);
     double d3 = triangle_sign(point, bounds.right, bounds.top);
@@ -29,7 +30,7 @@ bool tri_bounds_has(tri_bounds_t bounds, vector2_t point) {
     return !(has_neg && has_pos);
 }
 
-tri_t tri_subst_points(tri_table_t *table, tri_t tri, size_t n, tri_bounds_t bounds, size_t len, vector2_t *points, tri_t type) {
+static inline tri_t tri_subst_points(tri_table_t *table, tri_t tri, size_t n, tri_bounds_t bounds, size_t len, vector2_t *points, tri_t type) {
     bool skip = true;
     for (size_t i = 0; i < len; i++) {
         if (tri_bounds_has(bounds, points[i])) {
@@ -88,13 +89,7 @@ tri_t tri_subst_points(tri_table_t *table, tri_t tri, size_t n, tri_bounds_t bou
     }
 }
 
-tri_t tri_subst_point(tri_table_t *table, tri_t tri, size_t n, tri_bounds_t bounds, vector2_t point, tri_t type) {
-    vector2_t points[1] = { point };
-    return tri_subst_points(table, tri, n, bounds, 1, &points[0], type);
-}
-
-
-const char *main_reload_file(forth_context_t *ctx, const char *path, const char *last_data) {
+static inline char *main_reload_file(forth_context_t *ctx, const char *path, char *last_data) {
     FILE *file = fopen(path, "r");
     fseek(file, 0, SEEK_END);
     size_t len = (size_t) ftell(file);
@@ -111,12 +106,13 @@ const char *main_reload_file(forth_context_t *ctx, const char *path, const char 
         free((void *) last_data);
     }
 
-    return (const char *) ret;
+    return (char *) ret;
 }
 
 int main(int argc, char **argv) {
     (void) argc;
     (void) argv;
+    // test();
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow((int) screen_width, (int) screen_height, "Trieste");
@@ -125,7 +121,7 @@ int main(int argc, char **argv) {
         .y = -0.2,
         .radius = 0.1,
     };
-    double base_zoom_speed = 1;
+    double base_zoom_speed = 10;
     double base_move_speed = 1;
 
     char lines[16][81] = {0};
@@ -157,14 +153,16 @@ int main(int argc, char **argv) {
         }
     }
 
-    const char *last_data = main_reload_file(ctx, load_path, NULL);
+    char *last_data = main_reload_file(ctx, load_path, NULL);
 
-    forth_object_t obj = forth_resolve_tagged(ctx, "on-init", forth_tag_tri());
-    if (obj.tag != forth_tag_tri()) {
+    forth_object_t obj = forth_find_typed(ctx, "on-init", forth_type_tri());
+    if (obj.tag == forth_type_tri()) {
         tri = forth_to_tri(obj);
     }
 
     Font font = LoadFontEx("./UbuntuMono-B.ttf", 72, NULL, 0);
+
+    size_t n = 0;
 
     while (!WindowShouldClose()) {
         screen_height = GetScreenHeight();
@@ -172,8 +170,8 @@ int main(int argc, char **argv) {
 
         // equal triangle of points on the unit circle
         vector2_t mouse = (vector2_t) {
-            .x = GetMousePosition().x,
-            .y = GetMousePosition().y,
+            .x = (double) GetMousePosition().x,
+            .y = (double) GetMousePosition().y,
         };
 
         tri_bounds_t bounds = (tri_bounds_t) {
@@ -199,9 +197,11 @@ int main(int argc, char **argv) {
             }
         }
 
-        if (IsMouseButtonPressed(KEY_R)) {
+        if (IsMouseButtonPressed(KEY_R) || n % 60 == 0) {
             last_data = main_reload_file(ctx, load_path, last_data);
         }
+
+        n += 1;
 
         if (mouse_pos_last.x != 0 || mouse_pos_last.y != 0) {
             if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
@@ -211,14 +211,14 @@ int main(int argc, char **argv) {
                     points[i] = vector2_lerp(mouse_pos_last, mouse, (double) i / 20);
                 }
                 if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                    forth_object_t on_left = forth_resolve_tagged(ctx, "on-left", forth_tag_tri());
-                    if (on_left.tag == forth_tag_tri()) {
+                    forth_object_t on_left = forth_find_typed(ctx, "on-left", forth_type_tri());
+                    if (on_left.tag == forth_type_tri()) {
                         tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, forth_to_tri(on_left));
                     }
                 }
                 if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-                    forth_object_t on_right = forth_resolve_tagged(ctx, "on-right", forth_tag_tri());
-                    if (on_right.tag == forth_tag_tri()) {
+                    forth_object_t on_right = forth_find_typed(ctx, "on-right", forth_type_tri());
+                    if (on_right.tag == forth_type_tri()) {
                         tri = tri_subst_points(table, tri, brush_size, bounds, 20, points, forth_to_tri(on_right));
                     }
                 }
@@ -236,13 +236,6 @@ int main(int argc, char **argv) {
                 line += 1;
             }
 
-            #if defined(TEST_DRAW)
-                {
-                    snprintf(lines[line], 80, "BRUSH: %zu\n", brush_size);
-                    line += 1;
-                }
-            #endif
-
             // {
             //     snprintf(lines[line], 80, "TRIS: %"PRIu64"\n", table->id);
             //     line += 1;
@@ -251,8 +244,8 @@ int main(int argc, char **argv) {
 
         // zoom & pan
         {
-            double zoom_speed = pow(1 + base_zoom_speed, GetFrameTime());
-            double move_speed = GetFrameTime() * base_move_speed;
+            double zoom_speed = pow(1 + base_zoom_speed, (double) GetFrameTime());
+            double move_speed = (double) GetFrameTime() * base_move_speed;
             if (IsKeyDown(KEY_Q)) {
                 camera.radius /= zoom_speed;
             }

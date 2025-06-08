@@ -1,4 +1,6 @@
 
+#include "float.h"
+
 float float_lerp(float a, float b, float n) {
     return a*(1 - n) + b*n;
 }
@@ -28,7 +30,7 @@ float float_abs(float x) {
 }
 
 double double_lerp(double a, double b, double n) {
-    return a*(1 - n) + b*n;
+    return a * (1 - n) + b * n;
 }
 
 double double_min(double x, double y) {

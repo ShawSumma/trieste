@@ -16,6 +16,8 @@
     }
 #include "colors.inc"
 
+extern FORTH_LIBRARY_VAR(color);
+
 FORTH_LIBRARY_VAR(color) = {
     #define COLOR(name, r, g, b) { #name, CONCAT(lib_color_, name), NULL },
     #include "colors.inc"

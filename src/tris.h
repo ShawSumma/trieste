@@ -24,6 +24,7 @@ enum {
     TYPE_COLOR,
     MAX_TYPE,
 };
+
 struct tri_t {
     uint64_t id;
     uint64_t hash;

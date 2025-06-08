@@ -25,8 +25,13 @@
 /magenta 255 0 255 rgb def
 /raywhite 245 245 245 rgb def
 
-/on-left 1 2 3 rgb def
-# /on-left black 64 fill def
-# /on-left white black 20 serp def
-/on-right white 64 fill def
+/rg red green 12 serp def
+/gb green blue 12 serp def
+/br blue red 12 serp def
+/pix rg gb br white tri def
+/light black white 8 serp pix 16 serp def
+/dark pix white black 8 serp 16 serp def
+
+/on-left light def
+/on-right dark def
 /on-init white 64 fill def

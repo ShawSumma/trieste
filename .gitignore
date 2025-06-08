@@ -6,3 +6,4 @@ snap.*
 compile_commands.json
 *.dSYM
 *.ttf
+out

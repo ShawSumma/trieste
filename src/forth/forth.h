@@ -16,6 +16,7 @@ typedef struct forth_context_t forth_context_t;
 
 typedef void (*forth_function_pointer_t)(forth_context_t *ctx, void *closure);
 
+/// the name usually the binding name, but doesn't have to be.
 struct forth_function_t {
     const char *name;
     forth_function_pointer_t ptr;
@@ -27,6 +28,7 @@ struct forth_string_t {
     const char *ptr;
 };
 
+/// any type for forth
 struct forth_object_t {
     uint8_t tag;
     union forth_object_data_t {
@@ -39,6 +41,7 @@ struct forth_object_t {
     } data;
 };
 
+/// use `forth_define`
 struct forth_binding_t {
     const char *name;
     forth_object_t object;
@@ -56,11 +59,18 @@ struct forth_context_t {
     forth_stack_t *stack;
 };
 
-// contexts
+/// allocates a forth context
 forth_context_t *forth_new(tri_table_t *table);
+/// adds binding, shadows any bindings with same name
+///
+/// consider using the typed versions, like `forth_define_number`
 void forth_define(forth_context_t *ctx, const char *name, forth_object_t object);
+/// find the most recent define with a matching name as a reference,
+/// if none can be found returns NULL
 forth_object_t *forth_find(forth_context_t *ctx, const char *name);
-forth_object_t forth_resolve_tagged(forth_context_t *ctx, const char *name, uint8_t forth_tag);
+/// similar to `forth_find`, but calls functions until they resolve to the right type or,
+/// if none can be found, returns a nil object
+forth_object_t forth_find_typed(forth_context_t *ctx, const char *name, uint8_t forth_type);
 
 // libraries
 void forth_use_library(forth_context_t *ctx, forth_function_t *lib);

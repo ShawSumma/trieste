@@ -1,16 +1,23 @@
 
 CC = clang
 DEBUG = lldb
+MKDIR = mkdir -p
 
 ARGS =
 
 TEST = NONE
 
-# CFLAGS += -O2 -flto
-CFLAGS += -g -fsanitize=address,undefined
+FLAGS += -O2 -flto
+# FLAGS += -g -fsanitize=address,undefined
+
+LDFLAGS += ${FLAGS}
+LDFLAGS += -framework Cocoa -framework IOKit
+
 CFLAGS += -I raylib/include
-CFLAGS += -Wall -Wextra -Wconversion -std=c11 -pedantic
-CFLAGS += -ferror-limit=1
+# CFLAGS += -Wall -Wextra -Weverything -std=c11
+CFLAGS += -std=c11 -pedantic -Wall -Wextra
+# CFLAGS += -Wno-float-equal -Weverything -Wno-undef -Wno-declaration-after-statement -Wno-padded -Wno-poison-system-directories
+CFLAGS += ${FLAGS}
 
 SRCS :=
 SRCS += src/camera.c
@@ -29,13 +36,25 @@ SRCS += src/forth/forth.c
 SRCS += src/forth/lib/core.c
 SRCS += src/forth/lib/color.c
 
-run: build
-	./bin/trieste ${ARGS}
+run: bins .dummy
+	./out/bin/trieste ${ARGS}
 
-debug: build
-	${DEBUG} ./bin/trieste -- ${ARGS}
+build: bins
 
-build: bin/trieste
+clean: .dummy
+	rm -rf out
 
-bin/trieste: ${SRCS}
-	${CC} ${SRCS} -o bin/trieste raylib/lib/libraylib.a -framework Cocoa -framework IOKit -DTEST_${TEST} ${CFLAGS}
+debug: bins
+	${DEBUG} ./out/bin/trieste -- ${ARGS}
+
+bins: out/bin/trieste
+
+out/bin/trieste: ${SRCS:%.c=out/lib/%.o}
+	@ ${MKDIR} ${dir ${@}}
+	${CC} ${^} -o ${@} raylib/lib/libraylib.a ${LDFLAGS}
+
+out/lib/%.o: %.c
+	@ ${MKDIR} ${dir ${@}}
+	${CC} -c ${^} -o ${@} ${CFLAGS}
+
+.dummy:

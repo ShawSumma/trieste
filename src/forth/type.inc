@@ -26,43 +26,42 @@
 #if !defined(FORTH_TYPE_SETUP_DONE)
 #define FORTH_TYPE_SETUP_DONE
 
-// implmentation of CAT(x, y)
+/// private impl of CAT(x, y)
 #define PREPROC_CAT_(x, y) x ## y
 
-// private
+/// private impl
 static inline uint8_t forth_base_(void) {
     return __COUNTER__;
 }
 #endif
 
-// joins args
+/// joins args
 #define CAT(x, y) PREPROC_CAT_(x, y)
 
-static inline uint8_t CAT(forth_tag_, NAME)(void) {
+static inline uint8_t CAT(forth_type_, NAME)(void) {
     return __COUNTER__ - forth_base_();
 }
 static inline bool CAT(forth_is_, NAME)(forth_object_t obj) {
-    return obj.tag == CAT(forth_tag_, NAME)();
+    return obj.tag == CAT(forth_type_, NAME)();
 }
 
-// fun preprocessor trick
 #define is_void_void 1
 
 #if CAT(is_void_, TYPE)
-// type is void
+// TYPE is void
 
 static inline forth_object_t CAT(forth_of_, NAME)(void) {
     return (forth_object_t) {
-        .tag = CAT(forth_tag_, NAME)(),
+        .tag = CAT(forth_type_, NAME)(),
     };
 }
 
 #else
-// type is not void
+// TYPE is not void
 
 static inline forth_object_t CAT(forth_of_, NAME)(TYPE NAME) {
     return (forth_object_t) {
-        .tag = CAT(forth_tag_, NAME)(),
+        .tag = CAT(forth_type_, NAME)(),
         .data.NAME = NAME,
     };
 }

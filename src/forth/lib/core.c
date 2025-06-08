@@ -12,7 +12,7 @@ static inline void forth_core_print(forth_context_t *ctx, void *closure) {
     } else if (forth_is_tri(obj)) {
         tri_t tri = forth_to_tri(obj);
         color_t color = tri.color;
-        printf("<tri: %.14g %.14g %.14g>", color.r, color.g, color.b);
+        printf("<tri: %.14g %.14g %.14g>", (double) color.r, (double) color.g, (double) color.b);
     } else if (forth_is_function(obj)) {
         printf("<func: %s>", forth_to_function(obj).name);
     } else if (forth_is_string(obj)) {
@@ -88,6 +88,7 @@ static inline void forth_core_def(forth_context_t *ctx, void *closure) {
     forth_define(ctx, str.ptr, obj);
 }
 
+extern FORTH_LIBRARY_VAR(core);
 FORTH_LIBRARY_VAR(core) = {
     { ".", forth_core_print, NULL },
     { "dup", forth_core_dup, NULL },

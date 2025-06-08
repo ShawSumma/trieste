@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// contexts
 forth_context_t *forth_new(tri_table_t *table) {
     forth_context_t *ctx = malloc(sizeof(forth_context_t));
     *ctx = (forth_context_t) {
@@ -49,11 +48,11 @@ forth_object_t *forth_find(forth_context_t *ctx, const char *name) {
     }
 }
 
-forth_object_t forth_resolve_tagged(forth_context_t *ctx, const char *name, uint8_t forth_tag) {
+forth_object_t forth_find_typed(forth_context_t *ctx, const char *name, uint8_t forth_tag) {
     forth_object_t *ref_obj = forth_find(ctx, name);
     if (ref_obj != NULL) {
         forth_object_t obj = *ref_obj;
-        while (forth_is_function(obj)) {
+        while (forth_is_function(*ref_obj)) {
             forth_function_t func = forth_to_function(obj);
             func.ptr(ctx, func.closure);
             obj = forth_pop(ctx);
@@ -98,7 +97,6 @@ static inline void forth_exec_func(forth_context_t *ctx, void *closure) {
     forth_exec(ctx, -1, (const char *) closure);
 }
 
-// interp
 void forth_exec(forth_context_t *ctx, ptrdiff_t len_arg, const char *src) {
     (void) ctx;
 
@@ -141,13 +139,13 @@ void forth_exec(forth_context_t *ctx, ptrdiff_t len_arg, const char *src) {
                 head += 1;
             }
             part_len -= 1;
-            char *buf = malloc(sizeof(char) * (part_len + 1));
-            memcpy(buf, start, part_len);
-            buf[part_len] = '\0';
+            char *part_buf = malloc(sizeof(char) * (part_len + 1));
+            memcpy(part_buf, start, part_len);
+            part_buf[part_len] = '\0';
             forth_push_function(ctx, (forth_function_t) {
                 .name = "lambda",
                 .ptr = &forth_exec_func,
-                .closure = buf,
+                .closure = part_buf,
             });
             continue;
         }
@@ -172,12 +170,12 @@ void forth_exec(forth_context_t *ctx, ptrdiff_t len_arg, const char *src) {
             }
             forth_push_number(ctx, n);
         } else if (buf[0] == '/') {
-            size_t len = strlen(&buf[1]);
-            char *ptr = malloc(sizeof(char) * (len + 1));
-            memcpy(ptr, &buf[1], len);
-            ptr[len] = '\0';
+            size_t size = strlen(&buf[1]);
+            char *ptr = malloc(sizeof(char) * (size + 1));
+            memcpy(ptr, &buf[1], size);
+            ptr[size] = '\0';
             forth_push_string(ctx, (forth_string_t) {
-                .len = len,
+                .len = size,
                 .ptr = ptr,
             });
         } else {

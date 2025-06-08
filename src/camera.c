@@ -1,8 +1,8 @@
 
 #include "camera.h"
 
-double screen_width = 1920/2;
-double screen_height = 1080/2;
+double screen_width = 960.0;
+double screen_height = 540.0;
 
 vector2_t world_to_screen(camera_t camera, vector2_t world);
 vector2_t screen_to_world(camera_t camera, vector2_t screen);
