@@ -59,11 +59,12 @@ struct forth_context_t {
     forth_stack_t *stack;
 };
 
+
 /// allocates a forth context
 forth_context_t *forth_new(tri_table_t *table);
+/// runs a file if it's content is not the same as last_data.
+char *forth_reload_file(forth_context_t *ctx, const char *path, char *last_data);
 /// adds binding, shadows any bindings with same name
-///
-/// consider using the typed versions, like `forth_define_number`
 void forth_define(forth_context_t *ctx, const char *name, forth_object_t object);
 /// find the most recent define with a matching name as a reference,
 /// if none can be found returns NULL
@@ -76,7 +77,7 @@ forth_object_t forth_find_typed(forth_context_t *ctx, const char *name, uint8_t 
 void forth_use_library(forth_context_t *ctx, forth_function_t *lib);
 
 #define FORTH_LIBRARY_VAR(name) forth_function_t forth_library_ ## name[]
-#define FORTH_USE_LIBARRY(ctx, name) \
+#define FORTH_USE_LIBRARY(ctx, name) \
     { \
         extern FORTH_LIBRARY_VAR(name); \
         forth_use_library((ctx), forth_library_ ## name); \

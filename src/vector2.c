@@ -31,8 +31,8 @@ vector2_t vector2_add(vector2_t a, vector2_t b) {
 
 vector2_t vector2_sub(vector2_t a, vector2_t b) {
     return (vector2_t) {
-        .x = a.x + b.x,
-        .y = a.y + b.y,
+        .x = a.x - b.x,
+        .y = a.y - b.y,
     };
 }
 

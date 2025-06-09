@@ -30,8 +30,10 @@ vector2_t screen_to_world(camera_t camera, vector2_t screen) {
     double size = 0;
     if (screen_width > screen_height) {
         size = screen_height;
+        x_offset = (screen_width - size);
     } else {
         size = screen_width;
+        y_offset = (screen_height - size);
     }
     return (vector2_t) {
         .x = double_unmap(screen.x - x_offset * 0.5, camera.x - camera.radius, camera.x + camera.radius, 0, size),

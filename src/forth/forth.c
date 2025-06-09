@@ -192,3 +192,23 @@ void forth_exec(forth_context_t *ctx, ptrdiff_t len_arg, const char *src) {
         }
     }
 }
+
+char *forth_reload_file(forth_context_t *ctx, const char *path, char *last_data) {
+    FILE *file = fopen(path, "r");
+    fseek(file, 0, SEEK_END);
+    size_t len = (size_t) ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *ret = malloc(len + 1);
+    fread(ret, 1, len, file);
+    ret[len] = '\0';
+
+    if (last_data == NULL || !!strcmp(last_data, ret)) {
+        forth_exec(ctx, (ptrdiff_t) len, ret);
+    }
+
+    if (last_data != NULL) {
+        free((void *) last_data);
+    }
+
+    return (char *) ret;
+}

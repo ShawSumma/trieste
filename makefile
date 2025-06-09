@@ -29,6 +29,8 @@ SRCS += src/tris.c
 SRCS += src/vector2.c
 SRCS += src/worldgen.c
 
+SRCS += src/pen/pen.c
+
 SRCS += src/serial/serial.c
 
 SRCS += src/float.c

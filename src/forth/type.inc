@@ -9,8 +9,8 @@
  *
  * Add this to `forth.h` near the comment saying "add include here":
  * ```c
- * #define TYPE my_var_name
- * #define NAME my_data_type_t
+ * #define TYPE my_data_type_t
+ * #define NAME my_var_name
  * #include "type.inc"
  * ```
  */
